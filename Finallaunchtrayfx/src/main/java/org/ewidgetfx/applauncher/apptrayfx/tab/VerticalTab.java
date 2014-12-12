@@ -37,155 +37,166 @@ import org.apache.log4j.Logger;
  */
 public class VerticalTab extends Pane {
 
-    private static final Logger logger = Logger.getLogger(VerticalTab.class);
+	private static final Logger logger = Logger.getLogger(VerticalTab.class);
 
-    private String name;
-    private final VerticalTabPane parent;
-    private Pane content;
-    private int selectIndex;
-    public static int TAB_HEIGHT = 80;
-    public static int TAB_WIDTH = 20;
-    private final Shape tabRectangle;
-    private final Shape tabContentShape;
-    private final List<Node> contentChildren = new ArrayList<>();
-    protected Group group = new Group();
+	private String name;
+	private final VerticalTabPane parent;
+	private Pane content;
+	private int selectIndex;
+	public static int TAB_HEIGHT = 80;
+	public static int TAB_WIDTH = 20;
+	private  Shape tabRectangle;
+	private  Shape tabContentShape;
+	private final List<Node> contentChildren = new ArrayList<>();
+	protected Group group = new Group();
+	//Shape tabShape;
+	//Shape subtractShape;
 
-    public VerticalTab(String name, int selectIndex, VerticalTabPane parent) {
-        this.name = name;
-        this.parent = parent;
-        this.selectIndex = selectIndex;
+	public void makeShape(double height) {
+		Rectangle tabRect = new Rectangle(0,
+				(selectIndex * TAB_HEIGHT + (3 * (selectIndex + 1))),
+				(TAB_WIDTH + 3), TAB_HEIGHT);
+		tabRect.setArcHeight(6);
+		tabRect.setArcWidth(6);
 
-        setId(name);
+		Rectangle contentRect = new Rectangle(TAB_WIDTH, 0, (83 - TAB_WIDTH),
+				height);
+		contentRect.setArcHeight(10);
+		contentRect.setArcWidth(10);
 
-        // build tab
-        Shape tabRect = RectangleBuilder.create()
-                .x(0)
-                .y(selectIndex * TAB_HEIGHT + (3 * (selectIndex + 1)))
-                .arcWidth(6)
-                .arcHeight(6)
-                .width(TAB_WIDTH + 3) // allow overlap for union of tab and content rectangle
-                .height(TAB_HEIGHT)
-                //.style("-fx-background-color: transparent;")
-                //.fill(Color.rgb(0, 0, 0, .50))
-                //.stroke(Color.WHITE)
-                .build();
+		Shape unionShape = Shape.union(tabRect, contentRect);
+		unionShape.setStroke(Color.WHITE);
+		unionShape.setFill(Color.rgb(0, 0, 0, .70));
+		
+		Shape subShape = Shape.subtract(tabRect, contentRect);
+		subShape.setFill(Color.rgb(0, 0, 0, .70));
+		subShape.setStroke(Color.WHITE);
 
-        Rectangle contentRect = RectangleBuilder.create()
-                .x(TAB_WIDTH)
-                .y(0)
-                .arcWidth(10)
-                .arcHeight(10)
-                .width(parent.getPrefWidth() - TAB_WIDTH)
-                .height(parent.getPrefHeight())
-                //.style("-fx-background-color: transparent;")
-                .build();
-        contentRect.heightProperty().bind(parent.prefHeightProperty());
-        contentRect.arcHeightProperty().bind(parent.prefWidthProperty().divide(10));
-        contentRect.arcWidthProperty().bind(parent.prefWidthProperty().divide(10));
-        
-        Shape tabShape = Shape.union(tabRect, contentRect);
-        tabContentShape = tabShape;
-        tabShape.setStroke(Color.WHITE);
-        tabShape.setFill(Color.rgb(0, 0, 0, .70));
-        contentRect.strokeProperty().bind(tabShape.strokeProperty());
-        //tabShape.setStyle("-fx-background-color: transparent;");
+		/*subtractShape = subShape;
+		tabRectangle = subtractShape;*/
+		tabContentShape = unionShape;
+		tabRectangle = subShape;
+		//return unionShape;
+	}
 
-        
-        group.getChildren().add(tabRect);
-        group.getChildren().add(contentRect);
-        //group.getChildren().add(tabShape);
+	public VerticalTab(String name, int selectIndex, VerticalTabPane parent) {
+		this.name = name;
+		this.parent = parent;
+		this.selectIndex = selectIndex;
 
-        // IMPORTANT now you add the tab region with white stroke after union operation
-        // when using shape operations don't mess with colors until after.
-        tabRect = Shape.subtract(tabRect, contentRect);
+		setId(name);
+		//tabShape = makeShape(parent.getPrefHeight());
+		//tabContentShape = tabShape;
+		
+		makeShape(parent.getPrefHeight());
+		group.getChildren().add(tabContentShape);
 
-        tabRect.setFill(Color.rgb(0, 0, 0, .70));
-        tabRect.setStroke(Color.WHITE);
-        tabRectangle = tabRect;
-        //tabRectangle.setStyle("-fx-background-color: transparent;");
-        group.getChildren().add(tabRectangle);
+		parent.heightProperty().addListener((p, o, n) -> {
+			if (tabContentShape != null) {
+				group.getChildren().remove(tabContentShape);
+			}
+			if (tabRectangle != null) {
+				group.getChildren().remove(tabRectangle);
+			}
+			//tabShape = makeShape(parent.getPrefHeight());
+			makeShape(parent.getPrefHeight());
+			//tabContentShape = tabShape;
+			//group.getChildren().add(tabShape);
+			//group.getChildren().add(subtractShape);
+			group.getChildren().add(tabContentShape);
+			group.getChildren().add(tabRectangle);
+		});
 
-        // build content region
-        getChildren().add(group);
-        group.setOnMousePressed((me) -> {
-            logger.info("Tab pressed " + selectIndex);
-        });
+		// IMPORTANT now you add the tab region with white stroke after union
+		// operation
+		// when using shape operations don't mess with colors until after.
+		//tabRectangle = subtractShape;
+		group.getChildren().add(tabRectangle);
 
-        // add the text of the tab last
-        double topTabY = selectIndex * TAB_HEIGHT + (3 * (selectIndex + 1));
-        double bottomTextY = topTabY + TAB_HEIGHT - (3 * (selectIndex + 1));
-        Text text = new Text(TAB_WIDTH - 6,bottomTextY,  name);
-        text.setFont(Font.font("SanSerif", 13));
-        text.setStroke(Color.WHITE);
-        text.setFill(Color.WHITE);
-        
-        text.getTransforms().add(Transform.rotate(-90, TAB_WIDTH - 6, bottomTextY));
-        getChildren().add(text);
-    }
+		// build content region
+		getChildren().add(group);
+		group.setOnMousePressed((me) -> {
+			logger.info("Tab pressed " + selectIndex);
+		});
 
-    public String getName() {
-        return name;
-    }
+		// add the text of the tab last
+		double topTabY = selectIndex * TAB_HEIGHT + (3 * (selectIndex + 1));
+		double bottomTextY = topTabY + TAB_HEIGHT - (3 * (selectIndex + 1));
+		Text text = new Text(TAB_WIDTH - 6, bottomTextY, name);
+		text.setFont(Font.font("SanSerif", 13));
+		text.setStroke(Color.WHITE);
+		text.setFill(Color.WHITE);
 
-    public void setName(String name) {
-        this.name = name;
-    }
+		text.getTransforms().add(
+				Transform.rotate(-90, TAB_WIDTH - 6, bottomTextY));
+		getChildren().add(text);
+	}
 
-    public Pane getContent() {
-        return content;
-    }
+	public String getName() {
+		return name;
+	}
 
-    public void setContent(Pane content) {
-        if (this.content != null) {
-            group.getChildren().remove(this.content);
-            contentChildren.clear();
-        }
-        this.content = content;
-        content.setLayoutX(TAB_WIDTH + 1);
-        group.getChildren().add(content);
-        contentChildren.addAll(content.getChildren());
-        content.toFront();
-    }
+	public void setName(String name) {
+		this.name = name;
+	}
 
-    public int getSelectIndex() {
-        return selectIndex;
-    }
+	public Pane getContent() {
+		return content;
+	}
 
-    public void setSelectIndex(int selectIndex) {
-        this.selectIndex = selectIndex;
-    }
+	public void setContent(Pane content) {
+		if (this.content != null) {
+			group.getChildren().remove(this.content);
+			contentChildren.clear();
+		}
+		this.content = content;
+		content.setLayoutX(TAB_WIDTH + 1);
+		group.getChildren().add(content);
+		contentChildren.addAll(content.getChildren());
+		content.toFront();
+	}
 
-    public Shape getTabRectangle() {
-        return tabRectangle;
-    }
+	public int getSelectIndex() {
+		return selectIndex;
+	}
 
-    public Shape getTabContentShape() {
-        return tabContentShape;
-    }
+	public void setSelectIndex(int selectIndex) {
+		this.selectIndex = selectIndex;
+	}
 
-    public void unselect() {
-        content.getChildren().removeAll(contentChildren);
-        // display tab rectangle
-        getTabRectangle().setVisible(true);
-        // set tab shape visible false
-        tabContentShape.setVisible(false);
-        content.setVisible(false);
-        group.getChildren().removeAll(tabContentShape, content);
-    }
+	public Shape getTabRectangle() {
+		return tabRectangle;
+	}
 
-    public void select() {
-        if (!content.getChildren().containsAll(contentChildren)) {
-            content.getChildren().addAll(contentChildren);
-        }
-        if (!group.getChildren().contains(tabContentShape) && !group.getChildren().contains(content)) {
-            group.getChildren().addAll(tabContentShape, content);
-        }
+	public Shape getTabContentShape() {
+		return tabContentShape;
+	}
 
-        // display tab rectangle
-        getTabRectangle().setVisible(false);
-        // set tab shape visible false
-        tabContentShape.setVisible(true);
-        content.setVisible(true);
-        requestLayout();
-    }
+	public void unselect() {
+		content.getChildren().removeAll(contentChildren);
+		// display tab rectangle
+		getTabRectangle().setVisible(true);
+		// set tab shape visible false
+		tabContentShape.setVisible(false);
+		content.setVisible(false);
+		group.getChildren().removeAll(tabContentShape, content);
+	}
+
+	public void select() {
+		if (!content.getChildren().containsAll(contentChildren)) {
+			content.getChildren().addAll(contentChildren);
+		}
+		if (!group.getChildren().contains(tabContentShape)
+				&& !group.getChildren().contains(content)) {
+			group.getChildren().addAll(tabContentShape, content);
+			//group.getChildren().add(content);
+		}
+
+		// display tab rectangle
+		getTabRectangle().setVisible(false);
+		// set tab shape visible false
+		tabContentShape.setVisible(true);
+		content.setVisible(true);
+		requestLayout();
+	}
 }
